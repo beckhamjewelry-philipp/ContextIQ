@@ -1,0 +1,31 @@
+node_modules/
+dist/
+build/
+lib/
+out/
+.env
+.env.local
+.env.*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+firebase-debug.log
+firebase-debug.*.log
+.firebase/
+.vscode/
+*.log
+.vercel
+
+# Extension build artifacts
+*.vsix
+extension/dist/
+extension/out/
+
+# Database files
+*.db
+*.db-wal
+*.db-shm
+
+# OS files
+.DS_Store
+Thumbs.db

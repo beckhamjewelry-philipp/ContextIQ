@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Copilot Memory MCP Server</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .status {
+            background: rgba(0, 255, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+        }
+        .api-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .endpoint {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+        .method {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .method.post { color: #FF9800; }
+        .method.get { color: #2196F3; }
+        .method.patch { color: #9C27B0; }
+        .method.delete { color: #F44336; }
+        a {
+            color: #90CAF9;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 Copilot Memory MCP Server</h1>
+        
+        <div class="status">
+            ✅ Server is running and ready to store memories!
+        </div>
+
+        <div class="api-info">
+            <h2>📡 API Endpoints</h2>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span> /api/health
+                <div>Check server health status</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method post">POST</span> /api/knowledge
+                <div>Store a new knowledge entry</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method post">POST</span> /api/knowledge/search
+                <div>Search existing knowledge entries</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span> /api/knowledge/:id
+                <div>Retrieve specific knowledge entry</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method patch">PATCH</span> /api/knowledge/:id
+                <div>Update existing knowledge entry</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method delete">DELETE</span> /api/knowledge/:id
+                <div>Delete knowledge entry</div>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method post">POST</span> /api/knowledge/conflicts
+                <div>Detect conflicts in knowledge entries</div>
+            </div>
+        </div>
+
+        <div class="api-info">
+            <h2>🔧 How to Use</h2>
+            <p>The Copilot Memory API is now live and ready to use! Here's how to get started:</p>
+            
+            <div class="endpoint">
+                <strong>🌐 Live API URL:</strong><br>
+                <code>https://aimem-q9cgj9973-kiranbjms-projects.vercel.app</code>
+            </div>
+            
+            <ol>
+                <li><strong>Install VSCode Extension:</strong> Install the extension from the repository</li>
+                <li><strong>Configure Extension:</strong> Set the server URL to the live API above</li>
+                <li><strong>Choose Storage Type:</strong> Select "server" storage in VSCode settings</li>
+                <li><strong>Start Using:</strong> Begin storing and retrieving memories with GitHub Copilot!</li>
+            </ol>
+            
+            <h3>🚀 Alternative Options</h3>
+            <div class="endpoint">
+                <strong>Local Development:</strong><br>
+                <code>cd copilot-memory-mcp && ./deploy.sh local</code>
+            </div>
+            
+            <div class="endpoint">
+                <strong>Deploy Your Own:</strong><br>
+                <code>./deploy.sh vercel</code>
+            </div>
+        </div>
+
+        <div class="api-info">
+            <h2>📚 Documentation</h2>
+            <p>For complete documentation, visit the <a href="https://github.com/your-username/copilot-memory-mcp" target="_blank">GitHub repository</a>.</p>
+        </div>
+
+        <div class="footer">
+            <p>Powered by Firebase Functions | Built with ❤️ for GitHub Copilot</p>
+        </div>
+    </div>
+
+    <script>
+        // Update status for documentation site
+        document.querySelector('.status').innerHTML = '📚 Documentation and Setup Guide - Server runs locally or on your preferred platform';
+        document.querySelector('.status').style.background = 'rgba(0, 123, 255, 0.2)';
+    </script>
+</body>
+</html>

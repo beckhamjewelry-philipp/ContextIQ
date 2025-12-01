@@ -1,0 +1,22 @@
+{
+  "name": "byterover-knowledge-importer",
+  "version": "1.0.0",
+  "description": "Import comprehensive ByteRover knowledge into SQLite MCP server",
+  "main": "import-byterover-knowledge.js",
+  "scripts": {
+    "import": "node import-byterover-knowledge.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.6"
+  },
+  "keywords": [
+    "byterover",
+    "knowledge",
+    "import",
+    "sqlite",
+    "mcp"
+  ],
+  "author": "ByteRover Knowledge Importer",
+  "license": "MIT"
+}

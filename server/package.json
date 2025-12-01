@@ -1,0 +1,20 @@
+{
+  "name": "copilot-memory-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Copilot memory storage with flexible storage backends",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "echo \"No build required for CommonJS\"",
+    "start": "node index.js",
+    "test": "echo \"No tests specified\" && exit 1"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "better-sqlite3": "^12.4.1",
+    "sqlite3": "^5.1.7"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,338 @@
+{
+  "name": "contextiq",
+  "displayName": "ContextIQ - Smart Context for GitHub Copilot",
+  "description": "Give your Copilot a brain! Smart context-aware memory with auto file tracking, symbol extraction, coding rules, and 27+ language code indexing. 14 MCP tools for knowledge storage, rules management, and codebase understanding.",
+  "version": "1.3.0",
+  "publisher": "kiranbjm",
+  "author": {
+    "name": "KIRAN BENNY JOSEPH",
+    "email": "kiran@kiranbennyjoseph.dev",
+    "url": "https://kiranbennyjoseph.dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ikolvi/ContextIQ.git"
+  },
+  "homepage": "https://github.com/Ikolvi/ContextIQ#readme",
+  "bugs": {
+    "url": "https://github.com/Ikolvi/ContextIQ/issues"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "AI",
+    "Machine Learning",
+    "Data Science",
+    "Other"
+  ],
+  "keywords": [
+    "github-copilot",
+    "contextiq",
+    "smart-context",
+    "ai-memory",
+    "sqlite",
+    "mcp-server",
+    "coding-rules",
+    "knowledge-base",
+    "code-indexing",
+    "symbol-search",
+    "ai-assistant",
+    "mcp-protocol",
+    "context-aware"
+  ],
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#0078d4",
+    "theme": "dark"
+  },
+  "activationEvents": [
+    "onCommand:copilot-memory.setupCopilotMCP",
+    "onCommand:copilot-memory.resetMCPConfiguration",
+    "onView:copilotMemoryExplorer"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "copilot-memory.selectProject",
+        "title": "Select Project",
+        "category": "ContextIQ",
+        "icon": "$(database)"
+      },
+      {
+        "command": "copilot-memory.startServer",
+        "title": "Start Server",
+        "category": "ContextIQ",
+        "icon": "$(play)"
+      },
+      {
+        "command": "copilot-memory.stopServer",
+        "title": "Stop Server",
+        "category": "ContextIQ",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "copilot-memory.projectStats",
+        "title": "Project Statistics",
+        "category": "ContextIQ",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "copilot-memory.configureStorage",
+        "title": "Configure Storage",
+        "category": "ContextIQ"
+      },
+      {
+        "command": "copilot-memory.viewMemory",
+        "title": "View Memory",
+        "category": "ContextIQ"
+      },
+      {
+        "command": "copilot-memory.clearMemory",
+        "title": "Clear Memory",
+        "category": "ContextIQ"
+      },
+      {
+        "command": "copilot-memory.resolveConflicts",
+        "title": "Resolve Memory Conflicts",
+        "category": "ContextIQ"
+      },
+      {
+        "command": "copilot-memory.exportMemory",
+        "title": "Export Memory",
+        "category": "ContextIQ"
+      },
+      {
+        "command": "copilot-memory.importMemory",
+        "title": "Import Memory",
+        "category": "ContextIQ"
+      },
+      {
+        "command": "copilot-memory.importByteRover",
+        "title": "Import ByteRover Knowledge",
+        "category": "ContextIQ",
+        "icon": "$(download)"
+      },
+      {
+        "command": "copilot-memory.setupCopilotMCP",
+        "title": "Setup Copilot MCP Integration",
+        "category": "ContextIQ",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "copilot-memory.resetMCPConfiguration",
+        "title": "🔄 Reset MCP Configuration (Switch from ByteRover to SQLite)",
+        "category": "ContextIQ",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "copilot-memory.updateCopilotInstructions",
+        "title": "Update Copilot Instructions File",
+        "category": "ContextIQ",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "copilot-memory.copyMCPJson",
+        "title": "📋 Copy MCP Configuration for Copilot",
+        "category": "ContextIQ",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "copilot-memory.installExtension",
+        "title": "⚡ Install & Configure Copilot Memory Extension",
+        "category": "ContextIQ",
+        "icon": "$(extensions)"
+      },
+      {
+        "command": "copilotMemory.indexWorkspace",
+        "title": "🔍 Index Workspace (Code Symbols)",
+        "category": "ContextIQ",
+        "icon": "$(search)"
+      },
+      {
+        "command": "copilotMemory.indexCurrentFile",
+        "title": "📄 Index Current File",
+        "category": "ContextIQ",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "copilotMemory.showIndexStats",
+        "title": "📊 Show Code Index Statistics",
+        "category": "ContextIQ",
+        "icon": "$(graph)"
+      }
+    ],
+    "configuration": {
+      "title": "ContextIQ",
+      "properties": {
+        "copilotMemory.storage.type": {
+          "type": "string",
+          "enum": [
+            "local",
+            "server",
+            "both"
+          ],
+          "default": "local",
+          "description": "Storage backend type"
+        },
+        "copilotMemory.storage.local.dataDir": {
+          "type": "string",
+          "default": "~/.copilot-memory",
+          "description": "Local storage directory (databases will be project-specific)"
+        },
+        "copilotMemory.storage.local.projectSpecific": {
+          "type": "boolean",
+          "default": true,
+          "description": "Create separate databases for each project/workspace"
+        },
+        "copilotMemory.storage.server.url": {
+          "type": "string",
+          "default": "https://aimem-q9cgj9973-kiranbjms-projects.vercel.app",
+          "description": "Server storage URL"
+        },
+        "copilotMemory.storage.server.apiKey": {
+          "type": "string",
+          "description": "Server API key"
+        },
+        "copilotMemory.storage.server.timeout": {
+          "type": "number",
+          "default": 10000,
+          "description": "Server request timeout in milliseconds"
+        },
+        "copilotMemory.mcp.serverPath": {
+          "type": "string",
+          "description": "Path to MCP server executable"
+        },
+        "copilotMemory.mcp.autoStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start MCP server"
+        },
+        "copilotMemory.logging.level": {
+          "type": "string",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ],
+          "default": "info",
+          "description": "Logging level"
+        },
+        "copilotMemory.codeIndexing.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable automatic code indexing with FileSystemWatcher"
+        },
+        "copilotMemory.codeIndexing.autoIndexOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically index workspace on extension activation"
+        },
+        "copilotMemory.codeIndexing.excludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Additional glob patterns to exclude from indexing (node_modules, dist, .git are always excluded)"
+        },
+        "copilotMemory.codeIndexing.includeDocumentation": {
+          "type": "boolean",
+          "default": true,
+          "description": "Extract JSDoc/docstrings from source files for richer symbol search"
+        }
+      }
+    },
+    "views": {
+      "copilotMemory": [
+        {
+          "id": "copilotMemoryExplorer",
+          "name": "Memory Explorer"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "copilotMemory",
+          "title": "ContextIQ",
+          "icon": "$(database)"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "copilot-memory.viewMemory",
+          "when": "view == copilotMemoryExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "copilot-memory.setupCopilotMCP",
+          "when": "view == copilotMemoryExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "copilot-memory.resetMCPConfiguration",
+          "when": "view == copilotMemoryExplorer",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "copilot-memory.configureStorage"
+        },
+        {
+          "command": "copilot-memory.viewMemory"
+        },
+        {
+          "command": "copilot-memory.clearMemory"
+        },
+        {
+          "command": "copilot-memory.resolveConflicts"
+        },
+        {
+          "command": "copilot-memory.exportMemory"
+        },
+        {
+          "command": "copilot-memory.importMemory"
+        },
+        {
+          "command": "copilot-memory.importByteRover"
+        },
+        {
+          "command": "copilot-memory.setupCopilotMCP"
+        },
+        {
+          "command": "copilot-memory.resetMCPConfiguration"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.9",
+    "@types/vscode": "^1.74.0",
+    "@typescript-eslint/eslint-plugin": "^8.11.0",
+    "@typescript-eslint/parser": "^8.11.0",
+    "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^3.1.1",
+    "eslint": "^9.13.0",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.21.0",
+    "uuid": "^10.0.0"
+  }
+}

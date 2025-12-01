@@ -1,0 +1,11 @@
+{
+  "storage": {
+    "type": "local",
+    "local": {
+      "dataDir": "~/.copilot-memory"
+    }
+  },
+  "logging": {
+    "level": "info"
+  }
+}
