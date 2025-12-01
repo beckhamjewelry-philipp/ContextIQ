@@ -110,17 +110,6 @@ export class SidebarTreeProvider implements vscode.TreeDataProvider<SidebarItem>
       });
 
       items.push({
-        label: 'Statistics',
-        description: 'Project statistics',
-        iconPath: new vscode.ThemeIcon('graph'),
-        command: {
-          command: 'copilot-memory.projectStats',
-          title: 'Project Statistics'
-        },
-        contextValue: 'stats'
-      });
-
-      items.push({
         label: 'Export Memory',
         description: 'Export memories to file',
         iconPath: new vscode.ThemeIcon('export'),

@@ -162,17 +162,6 @@ export class MemoryTreeProvider implements vscode.TreeDataProvider<MemoryTreeIte
       ));
 
       items.push(new MemoryTreeItem(
-        'Project Statistics',
-        vscode.TreeItemCollapsibleState.None,
-        {
-          command: 'copilot-memory.projectStats',
-          title: 'Project Statistics'
-        },
-        new vscode.ThemeIcon('graph'),
-        'View project memory statistics'
-      ));
-
-      items.push(new MemoryTreeItem(
         'Export Memory',
         vscode.TreeItemCollapsibleState.None,
         {

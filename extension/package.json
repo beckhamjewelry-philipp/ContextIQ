@@ -74,12 +74,6 @@
         "icon": "$(debug-stop)"
       },
       {
-        "command": "copilot-memory.projectStats",
-        "title": "Project Statistics",
-        "category": "ContextIQ",
-        "icon": "$(graph)"
-      },
-      {
         "command": "copilot-memory.configureStorage",
         "title": "Configure Storage",
         "category": "ContextIQ"
