@@ -2,7 +2,7 @@
   "name": "contextiq",
   "displayName": "ContextIQ - Smart Context for GitHub Copilot",
   "description": "Give your Copilot a brain! Smart context-aware memory with auto file tracking, symbol extraction, coding rules, and 27+ language code indexing. 14 MCP tools for knowledge storage, rules management, and codebase understanding.",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "publisher": "kiranbjm",
   "author": {
     "name": "KIRAN BENNY JOSEPH",

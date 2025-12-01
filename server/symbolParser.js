@@ -495,6 +495,9 @@ class SymbolParser {
         { regex: /(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=/g, kind: SymbolKind.Variable },
         { regex: /(\w+)\s*:\s*(?:async\s+)?function/g, kind: SymbolKind.Method },
         { regex: /(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/g, kind: SymbolKind.Function },
+        // Class methods
+        { regex: /^\s+(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{/gm, kind: SymbolKind.Method },
+        { regex: /^\s+(?:get|set)\s+(\w+)\s*\(/gm, kind: SymbolKind.Property },
       ],
       typescript: [
         { regex: /(?:export\s+)?(?:async\s+)?function\s+(\w+)/g, kind: SymbolKind.Function },
@@ -503,11 +506,60 @@ class SymbolParser {
         { regex: /(?:export\s+)?type\s+(\w+)/g, kind: SymbolKind.TypeParameter },
         { regex: /(?:export\s+)?(?:const|let|var)\s+(\w+)\s*[=:]/g, kind: SymbolKind.Variable },
         { regex: /(?:export\s+)?enum\s+(\w+)/g, kind: SymbolKind.Enum },
+        // Class methods and properties
+        { regex: /^\s+(?:public\s+|private\s+|protected\s+)?(?:static\s+)?(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*[^{]+)?\s*\{/gm, kind: SymbolKind.Method },
+        { regex: /^\s+(?:public\s+|private\s+|protected\s+)?(?:static\s+)?(?:readonly\s+)?(\w+)\s*[?]?\s*:/gm, kind: SymbolKind.Property },
+        { regex: /^\s+(?:get|set)\s+(\w+)\s*\(/gm, kind: SymbolKind.Property },
       ],
       python: [
         { regex: /^def\s+(\w+)/gm, kind: SymbolKind.Function },
         { regex: /^class\s+(\w+)/gm, kind: SymbolKind.Class },
         { regex: /^async\s+def\s+(\w+)/gm, kind: SymbolKind.Function },
+        // Class methods (indented def)
+        { regex: /^\s+def\s+(\w+)/gm, kind: SymbolKind.Method },
+        { regex: /^\s+async\s+def\s+(\w+)/gm, kind: SymbolKind.Method },
+        { regex: /^\s+@property[\s\S]*?def\s+(\w+)/gm, kind: SymbolKind.Property },
+      ],
+      dart: [
+        // Classes, mixins, extensions
+        { regex: /(?:abstract\s+)?class\s+(\w+)/g, kind: SymbolKind.Class },
+        { regex: /mixin\s+(\w+)/g, kind: SymbolKind.Class },
+        { regex: /extension\s+(\w+)/g, kind: SymbolKind.Class },
+        { regex: /enum\s+(\w+)/g, kind: SymbolKind.Enum },
+        // Top-level functions
+        { regex: /^(?:Future|Stream|void|int|double|String|bool|dynamic|var|\w+)\s+(\w+)\s*\([^)]*\)\s*(?:async\s*)?\{/gm, kind: SymbolKind.Function },
+        { regex: /^(?:Future|Stream|void|int|double|String|bool|dynamic|var|\w+)\s+(\w+)\s*\([^)]*\)\s*=>/gm, kind: SymbolKind.Function },
+        // Class methods
+        { regex: /^\s+(?:static\s+)?(?:Future|Stream|void|int|double|String|bool|dynamic|var|\w+)\s+(\w+)\s*\([^)]*\)\s*(?:async\s*)?\{/gm, kind: SymbolKind.Method },
+        { regex: /^\s+(?:static\s+)?(?:Future|Stream|void|int|double|String|bool|dynamic|var|\w+)\s+(\w+)\s*\([^)]*\)\s*=>/gm, kind: SymbolKind.Method },
+        // Getters and setters
+        { regex: /^\s+(?:static\s+)?(?:\w+\s+)?get\s+(\w+)/gm, kind: SymbolKind.Property },
+        { regex: /^\s+(?:static\s+)?set\s+(\w+)/gm, kind: SymbolKind.Property },
+        // Properties/fields
+        { regex: /^\s+(?:final\s+|const\s+|late\s+|static\s+)*(?:\w+)\s+(\w+)\s*[;=]/gm, kind: SymbolKind.Field },
+      ],
+      swift: [
+        { regex: /(?:public\s+|private\s+|internal\s+|fileprivate\s+|open\s+)?class\s+(\w+)/g, kind: SymbolKind.Class },
+        { regex: /(?:public\s+|private\s+|internal\s+)?struct\s+(\w+)/g, kind: SymbolKind.Struct },
+        { regex: /(?:public\s+|private\s+|internal\s+)?enum\s+(\w+)/g, kind: SymbolKind.Enum },
+        { regex: /(?:public\s+|private\s+|internal\s+)?protocol\s+(\w+)/g, kind: SymbolKind.Interface },
+        { regex: /(?:public\s+|private\s+|internal\s+)?extension\s+(\w+)/g, kind: SymbolKind.Class },
+        // Functions and methods
+        { regex: /func\s+(\w+)/g, kind: SymbolKind.Function },
+        { regex: /^\s+(?:public\s+|private\s+|internal\s+)?(?:static\s+|class\s+)?func\s+(\w+)/gm, kind: SymbolKind.Method },
+        // Properties
+        { regex: /^\s+(?:public\s+|private\s+|internal\s+)?(?:static\s+)?(?:var|let)\s+(\w+)/gm, kind: SymbolKind.Property },
+      ],
+      kotlin: [
+        { regex: /(?:data\s+)?class\s+(\w+)/g, kind: SymbolKind.Class },
+        { regex: /interface\s+(\w+)/g, kind: SymbolKind.Interface },
+        { regex: /object\s+(\w+)/g, kind: SymbolKind.Module },
+        { regex: /enum\s+class\s+(\w+)/g, kind: SymbolKind.Enum },
+        // Functions
+        { regex: /fun\s+(\w+)/g, kind: SymbolKind.Function },
+        { regex: /^\s+(?:private\s+|public\s+|protected\s+|internal\s+)?(?:suspend\s+)?fun\s+(\w+)/gm, kind: SymbolKind.Method },
+        // Properties
+        { regex: /^\s+(?:private\s+|public\s+|protected\s+|internal\s+)?(?:val|var)\s+(\w+)/gm, kind: SymbolKind.Property },
       ],
       rust: [
         { regex: /(?:pub\s+)?fn\s+(\w+)/g, kind: SymbolKind.Function },
@@ -516,18 +568,36 @@ class SymbolParser {
         { regex: /(?:pub\s+)?trait\s+(\w+)/g, kind: SymbolKind.Interface },
         { regex: /impl(?:<[^>]+>)?\s+(\w+)/g, kind: SymbolKind.Class },
         { regex: /(?:pub\s+)?mod\s+(\w+)/g, kind: SymbolKind.Module },
+        // Impl methods
+        { regex: /^\s+(?:pub\s+)?(?:async\s+)?fn\s+(\w+)/gm, kind: SymbolKind.Method },
       ],
       go: [
-        { regex: /func\s+(?:\([^)]+\)\s+)?(\w+)/g, kind: SymbolKind.Function },
+        { regex: /func\s+(\w+)\s*\(/g, kind: SymbolKind.Function },
+        // Methods (with receiver)
+        { regex: /func\s+\([^)]+\)\s+(\w+)/g, kind: SymbolKind.Method },
         { regex: /type\s+(\w+)\s+struct/g, kind: SymbolKind.Struct },
         { regex: /type\s+(\w+)\s+interface/g, kind: SymbolKind.Interface },
         { regex: /const\s+(\w+)/g, kind: SymbolKind.Constant },
+        { regex: /var\s+(\w+)/g, kind: SymbolKind.Variable },
       ],
       java: [
         { regex: /(?:public|private|protected)?\s*(?:static)?\s*(?:final)?\s*class\s+(\w+)/g, kind: SymbolKind.Class },
-        { regex: /(?:public|private|protected)?\s*(?:static)?\s*\w+\s+(\w+)\s*\(/g, kind: SymbolKind.Method },
-        { regex: /interface\s+(\w+)/g, kind: SymbolKind.Interface },
-        { regex: /enum\s+(\w+)/g, kind: SymbolKind.Enum },
+        { regex: /(?:public|private|protected)?\s*interface\s+(\w+)/g, kind: SymbolKind.Interface },
+        { regex: /(?:public|private|protected)?\s*enum\s+(\w+)/g, kind: SymbolKind.Enum },
+        // Methods
+        { regex: /^\s+(?:public|private|protected)?\s*(?:static)?\s*(?:\w+(?:<[^>]+>)?)\s+(\w+)\s*\(/gm, kind: SymbolKind.Method },
+        // Fields
+        { regex: /^\s+(?:public|private|protected)?\s*(?:static)?\s*(?:final)?\s*(?:\w+)\s+(\w+)\s*[;=]/gm, kind: SymbolKind.Field },
+      ],
+      csharp: [
+        { regex: /(?:public|private|protected|internal)?\s*(?:partial\s+)?class\s+(\w+)/g, kind: SymbolKind.Class },
+        { regex: /(?:public|private|protected|internal)?\s*interface\s+(\w+)/g, kind: SymbolKind.Interface },
+        { regex: /(?:public|private|protected|internal)?\s*struct\s+(\w+)/g, kind: SymbolKind.Struct },
+        { regex: /(?:public|private|protected|internal)?\s*enum\s+(\w+)/g, kind: SymbolKind.Enum },
+        // Methods
+        { regex: /^\s+(?:public|private|protected|internal)?\s*(?:static)?\s*(?:async)?\s*(?:\w+(?:<[^>]+>)?)\s+(\w+)\s*\(/gm, kind: SymbolKind.Method },
+        // Properties
+        { regex: /^\s+(?:public|private|protected|internal)?\s*(?:static)?\s*(?:\w+)\s+(\w+)\s*\{/gm, kind: SymbolKind.Property },
       ],
       c: [
         { regex: /(?:\w+\s+)+(\w+)\s*\([^)]*\)\s*\{/g, kind: SymbolKind.Function },
@@ -540,17 +610,48 @@ class SymbolParser {
         { regex: /class\s+(\w+)/g, kind: SymbolKind.Class },
         { regex: /struct\s+(\w+)/g, kind: SymbolKind.Struct },
         { regex: /namespace\s+(\w+)/g, kind: SymbolKind.Namespace },
+        // Methods
+        { regex: /^\s+(?:virtual\s+)?(?:\w+\s+)+(\w+)\s*\([^)]*\)\s*(?:const)?\s*(?:override)?\s*[;{]/gm, kind: SymbolKind.Method },
       ],
       ruby: [
-        { regex: /def\s+(\w+)/g, kind: SymbolKind.Method },
+        { regex: /^def\s+(\w+)/gm, kind: SymbolKind.Function },
         { regex: /class\s+(\w+)/g, kind: SymbolKind.Class },
         { regex: /module\s+(\w+)/g, kind: SymbolKind.Module },
+        // Instance methods (indented def)
+        { regex: /^\s+def\s+(\w+)/gm, kind: SymbolKind.Method },
+        { regex: /attr_(?:reader|writer|accessor)\s+:(\w+)/g, kind: SymbolKind.Property },
       ],
       php: [
         { regex: /function\s+(\w+)/g, kind: SymbolKind.Function },
         { regex: /class\s+(\w+)/g, kind: SymbolKind.Class },
         { regex: /interface\s+(\w+)/g, kind: SymbolKind.Interface },
         { regex: /trait\s+(\w+)/g, kind: SymbolKind.Interface },
+        // Methods
+        { regex: /^\s+(?:public|private|protected)?\s*(?:static)?\s*function\s+(\w+)/gm, kind: SymbolKind.Method },
+        // Properties
+        { regex: /^\s+(?:public|private|protected)?\s*(?:static)?\s*\$(\w+)/gm, kind: SymbolKind.Property },
+      ],
+      scala: [
+        { regex: /class\s+(\w+)/g, kind: SymbolKind.Class },
+        { regex: /object\s+(\w+)/g, kind: SymbolKind.Module },
+        { regex: /trait\s+(\w+)/g, kind: SymbolKind.Interface },
+        { regex: /case\s+class\s+(\w+)/g, kind: SymbolKind.Class },
+        // Functions
+        { regex: /def\s+(\w+)/g, kind: SymbolKind.Function },
+        { regex: /^\s+(?:private\s+|protected\s+)?def\s+(\w+)/gm, kind: SymbolKind.Method },
+        { regex: /^\s+(?:val|var)\s+(\w+)/gm, kind: SymbolKind.Property },
+      ],
+      lua: [
+        { regex: /function\s+(\w+)/g, kind: SymbolKind.Function },
+        { regex: /local\s+function\s+(\w+)/g, kind: SymbolKind.Function },
+        // Methods (colon syntax)
+        { regex: /function\s+\w+:(\w+)/g, kind: SymbolKind.Method },
+      ],
+      elixir: [
+        { regex: /defmodule\s+(\w+)/g, kind: SymbolKind.Module },
+        { regex: /def\s+(\w+)/g, kind: SymbolKind.Function },
+        { regex: /defp\s+(\w+)/g, kind: SymbolKind.Function },
+        { regex: /defmacro\s+(\w+)/g, kind: SymbolKind.Function },
       ],
     };
 
