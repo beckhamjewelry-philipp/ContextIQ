@@ -3,7 +3,14 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import { spawn, ChildProcess } from 'child_process';
+import * as fsSync from 'fs';
 import { KnowledgeEntry, SearchQuery, ProjectDatabase } from './types';
+
+function buildNodePath(extraPaths: string[]): string | undefined {
+  const existing = process.env.NODE_PATH ? process.env.NODE_PATH.split(path.delimiter) : [];
+  const merged = Array.from(new Set([...extraPaths, ...existing].filter(Boolean)));
+  return merged.length ? merged.join(path.delimiter) : undefined;
+}
 
 // Database connection pool to prevent multiple openings
 class DatabaseConnectionPool {
@@ -209,8 +216,43 @@ export class EmbeddedMCPServer {
     return dataDir.replace('~', os.homedir());
   }
 
+  private expandPath(filePath: string): string {
+    if (filePath.startsWith('~/')) {
+      return path.join(os.homedir(), filePath.slice(2));
+    }
+    return filePath;
+  }
+
   private getServerPath(): string {
-    return path.join(this.context.extensionPath, '..', '..', 'server', 'index-sqlite.js');
+    const candidates: string[] = [];
+
+    const config = vscode.workspace.getConfiguration('copilotMemory.mcp');
+    const configuredPath = config.get<string>('serverPath');
+    if (configuredPath) {
+      candidates.push(this.expandPath(configuredPath));
+    }
+
+    const workspaceFolders = vscode.workspace.workspaceFolders || [];
+    for (const folder of workspaceFolders) {
+      const root = folder.uri.fsPath;
+      candidates.push(path.join(root, 'server', 'index-sqlite.js'));
+      candidates.push(path.join(root, 'server', 'dist', 'index-sqlite.js'));
+    }
+
+    candidates.push(
+      path.join(this.context.extensionPath, 'server', 'index-sqlite.js'),
+      path.join(this.context.extensionPath, 'server', 'dist', 'index-sqlite.js'),
+      path.join(this.context.extensionPath, '..', '..', 'server', 'index-sqlite.js'),
+      path.join(this.context.extensionPath, '..', '..', 'server', 'dist', 'index-sqlite.js')
+    );
+
+    for (const candidate of candidates) {
+      if (fsSync.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    throw new Error(`MCP server not found. Tried: ${candidates.join(', ')}`);
   }
 
   async startServer(): Promise<void> {
@@ -349,9 +391,17 @@ export class EmbeddedMCPServer {
     // In reality, you'd spawn the MCP server process and communicate via JSON-RPC
     return new Promise((resolve, reject) => {
       const serverPath = this.getServerPath();
+      const nodePath = buildNodePath([
+        path.join(this.context.extensionPath, 'node_modules'),
+        path.join(path.dirname(serverPath), 'node_modules')
+      ]);
       const serverProcess = spawn('node', [serverPath], {
         stdio: ['pipe', 'pipe', 'pipe'],
-        cwd: path.dirname(serverPath)
+        cwd: path.dirname(serverPath),
+        env: {
+          ...process.env,
+          NODE_PATH: nodePath ?? process.env.NODE_PATH
+        }
       });
 
       let response = '';

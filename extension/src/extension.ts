@@ -11,6 +11,12 @@ import { CodeIndexer } from './codeIndexer';
 import { getActiveFileTracker, disposeActiveFileTracker } from './activeFileTracker';
 // import { SidebarProvider } from './sidebarProvider';
 
+function buildNodePath(extraPaths: string[]): string | undefined {
+  const existing = process.env.NODE_PATH ? process.env.NODE_PATH.split(path.delimiter) : [];
+  const merged = Array.from(new Set([...extraPaths, ...existing].filter(Boolean)));
+  return merged.length ? merged.join(path.delimiter) : undefined;
+}
+
 export async function activate(context: vscode.ExtensionContext) {
   console.log('Copilot Memory MCP extension is now active!');
 
@@ -278,9 +284,16 @@ async function testSQLiteServer(context: vscode.ExtensionContext) {
     // Run the test client
     const { spawn } = require('child_process');
     const testPath = context.asAbsolutePath('../../server/test-mcp-client.js');
-    
+    const nodePath = buildNodePath([
+      path.join(context.extensionPath, 'node_modules'),
+      path.join(path.dirname(serverPath), 'node_modules')
+    ]);
     const testProcess = spawn('node', [testPath], {
-      cwd: path.dirname(serverPath)
+      cwd: path.dirname(serverPath),
+      env: {
+        ...process.env,
+        NODE_PATH: nodePath ?? process.env.NODE_PATH
+      }
     });
     
     testProcess.on('close', (code: number) => {

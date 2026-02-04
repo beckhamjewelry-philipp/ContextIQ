@@ -211,7 +211,7 @@ export class CodeIndexer implements vscode.Disposable {
       this.hideProgress();
       
       // Parse results from response
-      const resultText = result.content[0]?.text || '';
+      const resultText = result.content?.[0]?.text || '';
       this.log(resultText);
       
       // Show summary
@@ -280,7 +280,7 @@ export class CodeIndexer implements vscode.Disposable {
         includeLanguageBreakdown: true
       });
       
-      const text = result.content[0]?.text || 'No stats available';
+      const text = result.content?.[0]?.text || 'No stats available';
       
       // Show in output channel
       this.outputChannel.show();

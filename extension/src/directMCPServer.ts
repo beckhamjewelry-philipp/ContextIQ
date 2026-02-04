@@ -1,7 +1,14 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as os from 'os';
+import * as fs from 'fs/promises';
 import { spawn, ChildProcess } from 'child_process';
+
+function buildNodePath(extraPaths: string[]): string | undefined {
+  const existing = process.env.NODE_PATH ? process.env.NODE_PATH.split(path.delimiter) : [];
+  const merged = Array.from(new Set([...extraPaths, ...existing].filter(Boolean)));
+  return merged.length ? merged.join(path.delimiter) : undefined;
+}
 
 /**
  * Direct MCP Server with Persistent Process
@@ -95,13 +102,7 @@ export class DirectMCPServer {
       return; // Already running
     }
     
-    const serverPath = path.join(
-      this.context.extensionPath,
-      '..',
-      '..',
-      'server',
-      'index-sqlite.js'
-    );
+    const serverPath = await this.resolveServerPath();
     
     // Set working directory to project-specific location
     const cwd = this.currentProject 
@@ -109,12 +110,17 @@ export class DirectMCPServer {
       : this.dataDir;
     
     // Spawn persistent server process
+    const nodePath = buildNodePath([
+      path.join(this.context.extensionPath, 'node_modules'),
+      path.join(path.dirname(serverPath), 'node_modules')
+    ]);
     this.serverProcess = spawn('node', [serverPath], {
       cwd,
       stdio: ['pipe', 'pipe', 'pipe'],
       env: {
         ...process.env,
-        COPILOT_MEMORY_PROJECT: this.currentProject || 'default'
+        COPILOT_MEMORY_PROJECT: this.currentProject || 'default',
+        NODE_PATH: nodePath ?? process.env.NODE_PATH
       }
     });
     
@@ -153,6 +159,48 @@ export class DirectMCPServer {
     
     this.updateStatusBar();
     console.log('MCP server started (persistent)');
+  }
+
+  private expandPath(filePath: string): string {
+    if (filePath.startsWith('~/')) {
+      return path.join(os.homedir(), filePath.slice(2));
+    }
+    return filePath;
+  }
+
+  private async resolveServerPath(): Promise<string> {
+    const candidates: string[] = [];
+
+    const config = vscode.workspace.getConfiguration('copilotMemory.mcp');
+    const configuredPath = config.get<string>('serverPath');
+    if (configuredPath) {
+      candidates.push(this.expandPath(configuredPath));
+    }
+
+    const workspaceFolders = vscode.workspace.workspaceFolders || [];
+    for (const folder of workspaceFolders) {
+      const root = folder.uri.fsPath;
+      candidates.push(path.join(root, 'server', 'index-sqlite.js'));
+      candidates.push(path.join(root, 'server', 'dist', 'index-sqlite.js'));
+    }
+
+    candidates.push(
+      path.join(this.context.extensionPath, 'server', 'index-sqlite.js'),
+      path.join(this.context.extensionPath, 'server', 'dist', 'index-sqlite.js'),
+      path.join(this.context.extensionPath, '..', '..', 'server', 'index-sqlite.js'),
+      path.join(this.context.extensionPath, '..', '..', 'server', 'dist', 'index-sqlite.js')
+    );
+
+    for (const candidate of candidates) {
+      try {
+        await fs.stat(candidate);
+        return candidate;
+      } catch {
+        // Try next candidate
+      }
+    }
+
+    throw new Error(`MCP server not found. Tried: ${candidates.join(', ')}`);
   }
   
   /**

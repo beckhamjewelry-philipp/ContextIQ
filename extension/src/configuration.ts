@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as os from 'os';
 import * as path from 'path';
+import * as fs from 'fs';
 
 export class ConfigurationManager {
   constructor(private context: vscode.ExtensionContext) {}
@@ -116,6 +117,19 @@ export class ConfigurationManager {
     const serverPath = config.get<string>('serverPath');
     
     if (!serverPath) {
+      const workspaceFolders = vscode.workspace.workspaceFolders || [];
+      for (const folder of workspaceFolders) {
+        const root = folder.uri.fsPath;
+        const candidate = path.join(root, 'server', 'index-sqlite.js');
+        if (fs.existsSync(candidate)) {
+          return candidate;
+        }
+        const distCandidate = path.join(root, 'server', 'dist', 'index-sqlite.js');
+        if (fs.existsSync(distCandidate)) {
+          return distCandidate;
+        }
+      }
+
       // Return bundled server path
       return path.join(this.context.extensionPath, 'server', 'dist', 'index-sqlite.js');
     }
