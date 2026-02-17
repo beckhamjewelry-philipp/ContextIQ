@@ -1,40 +1,36 @@
 #!/bin/bash
 
-# Build script for Copilot Memory MCP project
+# Build script for CustomerIQ Customer Context Platform
 
 set -e
 
-echo "🔨 Building Copilot Memory MCP..."
+echo "╔═══════════════════════════════════════════════════╗"
+echo "║         CustomerIQ Customer Context Platform      ║"
+echo "║                   Build Script                    ║"
+echo "╚═══════════════════════════════════════════════════╝"
+echo ""
 
-# Clean previous builds
-echo "🧹 Cleaning previous builds..."
-npm run clean
-
-# Install dependencies
-echo "📦 Installing dependencies..."
-npm install
-
-# Build shared types
-echo "🔧 Building shared types..."
-cd shared
-npm run build
-cd ..
-
-# Build server
-echo "🖥️  Building MCP server..."
+# Install server dependencies
+echo "📦 Installing server dependencies..."
 cd server
-npm run build
+npm install
 cd ..
 
-# Build extension
-echo "🔌 Building VSCode extension..."
-cd extension
-npm run compile
-cd ..
+# Install extension dependencies (if extension exists)
+if [ -d "extension" ]; then
+  echo "📦 Installing extension dependencies..."
+  cd extension
+  npm install
+  cd ..
+fi
 
+echo ""
 echo "✅ Build completed successfully!"
 echo ""
 echo "📋 Next steps:"
-echo "1. Configure the extension settings in VSCode"
-echo "2. Install the extension with: code --install-extension ./extension"
-echo "3. Start using Copilot Memory!"
+echo "1. Configure settings: cp config.env.example config.env"
+echo "2. Edit config.env with your database and service settings"
+echo "3. Start the application: ./start.sh"
+echo "4. Access web UI at: http://localhost:3000"
+echo ""
+echo "For production deployment, see DEPLOYMENT_GUIDE.md"

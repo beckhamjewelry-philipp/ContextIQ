@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CustomerIQ - Customer Management</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 CustomerIQ Customer Management</h1>
+            <p>Customer Context Platform - Powered by NATS & Multi-DB</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab active" onclick="showTab('customers')">Customers</button>
+            <button class="tab" onclick="showTab('timeline')">Timeline</button>
+            <button class="tab" onclick="showTab('stats')">Statistics</button>
+            <button class="tab" onclick="showTab('events')">Add Event</button>
+        </nav>
+
+        <!-- Customers Tab -->
+        <div id="customers-tab" class="tab-content active">
+            <div class="controls">
+                <input type="text" id="search-input" placeholder="Search customers...">
+                <button onclick="searchCustomers()">Search</button>
+                <button class="primary" onclick="showCreateCustomer()">+ New Customer</button>
+            </div>
+
+            <div id="customer-list" class="customer-list">
+                <p class="loading">Loading customers...</p>
+            </div>
+        </div>
+
+        <!-- Timeline Tab -->
+        <div id="timeline-tab" class="tab-content">
+            <div class="controls">
+                <input type="text" id="timeline-customer-id" placeholder="Customer ID">
+                <button onclick="loadTimeline()">Load Timeline</button>
+            </div>
+
+            <div id="timeline-view" class="timeline-view">
+                <p class="info">Enter a customer ID to view their timeline</p>
+            </div>
+        </div>
+
+        <!-- Stats Tab -->
+        <div id="stats-tab" class="tab-content">
+            <div id="stats-view" class="stats-view">
+                <p class="loading">Loading statistics...</p>
+            </div>
+        </div>
+
+        <!-- Events Tab -->
+        <div id="events-tab" class="tab-content">
+            <div class="form-container">
+                <h2>Publish Customer Event</h2>
+                <form id="event-form" onsubmit="createEvent(event)">
+                    <div class="form-group">
+                        <label>Customer ID *</label>
+                        <input type="text" id="event-customer-id" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Event Type *</label>
+                        <select id="event-type" required>
+                            <option value="purchase">Purchase</option>
+                            <option value="support_ticket">Support Ticket</option>
+                            <option value="contact">Contact</option>
+                            <option value="repair">Repair/Work Order</option>
+                            <option value="note">Note/Observation</option>
+                            <option value="profile_update">Profile Update</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Title *</label>
+                        <input type="text" id="event-title" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="event-description" rows="4"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Amount ($)</label>
+                        <input type="number" id="event-amount" step="0.01">
+                    </div>
+
+                    <button type="submit" class="primary">Create Event</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Create Customer Modal -->
+        <div id="create-customer-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Create New Customer</h2>
+                    <span class="close" onclick="closeModal()">&times;</span>
+                </div>
+                <form id="create-customer-form" onsubmit="createCustomer(event)">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" id="customer-name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="customer-email">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="tel" id="customer-phone">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Company</label>
+                        <input type="text" id="customer-company">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="customer-status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="vip">VIP</option>
+                            <option value="at-risk">At Risk</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tags (comma-separated)</label>
+                        <input type="text" id="customer-tags" placeholder="vip, enterprise, support">
+                    </div>
+
+                    <button type="submit" class="primary">Create Customer</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Customer Detail Modal -->
+        <div id="customer-detail-modal" class="modal">
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h2>Customer Profile</h2>
+                    <span class="close" onclick="closeModal()">&times;</span>
+                </div>
+                <div id="customer-detail-content">
+                    <p class="loading">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

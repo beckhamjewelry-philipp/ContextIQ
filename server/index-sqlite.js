@@ -7,25 +7,34 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const { initializeCustomerSchema } = require('./customerSchema');
+const NATSSubscriberService = require('./natsSubscriber');
+const CustomerContextBuilder = require('./customerContextBuilder');
 
 class CopilotMemoryServer {
   constructor() {
     this.storageDir = path.join(os.homedir(), '.copilot-memory');
     this.ensureStorageDir();
-    
+
     // Multi-scope: maintain separate DB connections for each scope
     this.dbs = {
       project: null,
       user: null,
       global: null
     };
-    
+
     this.statements = {
       project: null,
       user: null,
       global: null
     };
-    
+
+    // NATS subscriber service for customer events
+    this.natsService = null;
+
+    // Customer context builder
+    this.customerContextBuilder = null;
+
     this.server = new Server(
       {
         name: 'copilot-memory-mcp',
@@ -240,6 +249,11 @@ class CopilotMemoryServer {
         CREATE INDEX IF NOT EXISTS idx_imports_path ON imports(import_path);
         CREATE INDEX IF NOT EXISTS idx_imports_resolved ON imports(resolved_file_id);
       `);
+
+      // Initialize customer profile tables (PROJECT scope only for now)
+      if (scope === 'project') {
+        initializeCustomerSchema(db);
+      }
 
       // Prepare statements for this scope
       this.statements[scope] = {
@@ -603,6 +617,38 @@ class CopilotMemoryServer {
             }
           },
           {
+            name: 'store-knowledge',
+            description: 'Store knowledge in SQLite database when user says "remember" this information (alias for store_knowledge).',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                content: {
+                  type: 'string',
+                  description: 'The content to remember'
+                },
+                messages: {
+                  type: 'string',
+                  description: 'Alternate field used by older clients'
+                },
+                tags: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Tags to categorize the knowledge (optional)'
+                },
+                context: {
+                  type: 'string',
+                  description: 'Context or category for the knowledge (optional)'
+                },
+                scope: {
+                  type: 'string',
+                  enum: ['project', 'user', 'global'],
+                  description: 'Storage scope: project (default), user, or global'
+                }
+              },
+              required: ['content']
+            }
+          },
+          {
             name: 'retrieve_knowledge',
             description: 'Retrieve knowledge from SQLite database with full-text search. Returns related files and symbols for context-aware results.',
             inputSchema: {
@@ -636,6 +682,69 @@ class CopilotMemoryServer {
                 }
               },
               required: ['query']
+            }
+          },
+          {
+            name: 'retrieve-knowledge',
+            description: 'Retrieve knowledge from SQLite database (alias for retrieve_knowledge).',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                query: {
+                  type: 'string',
+                  description: 'Search query to find relevant knowledge'
+                },
+                tags: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Filter by specific tags (optional)'
+                },
+                limit: {
+                  type: 'number',
+                  description: 'Maximum number of results to return (default: 5)'
+                },
+                useFullText: {
+                  type: 'boolean',
+                  description: 'Use full-text search (true) or LIKE search (false). Default: true'
+                },
+                scope: {
+                  type: 'string',
+                  enum: ['project', 'user', 'global', 'all'],
+                  description: 'Search scope: project, user, global, or all (default: all)'
+                },
+                include_related: {
+                  type: 'boolean',
+                  description: 'Include related files and symbols in results (default: true)'
+                }
+              },
+              required: ['query']
+            }
+          },
+          {
+            name: 'list-knowledge',
+            description: 'List stored knowledge with advanced filtering and statistics (alias for list_knowledge).',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                limit: {
+                  type: 'number',
+                  description: 'Maximum number of entries to return (default: 10)'
+                },
+                tags: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Filter by specific tags (optional)'
+                },
+                optimize: {
+                  type: 'boolean',
+                  description: 'Run database optimization (VACUUM and ANALYZE). Default: false'
+                },
+                scope: {
+                  type: 'string',
+                  enum: ['project', 'user', 'global', 'all'],
+                  description: 'List scope: project, user, global, or all (default: all)'
+                }
+              }
             }
           },
           {
@@ -920,6 +1029,210 @@ class CopilotMemoryServer {
                 }
               }
             }
+          },
+          // ==================== CUSTOMER MANAGEMENT TOOLS ====================
+          {
+            name: 'get_customer_context',
+            description: 'Get comprehensive customer context for AI engagement. Retrieves complete customer profile with events, purchases, work orders, and important notes.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                customer_id: {
+                  type: 'string',
+                  description: 'Customer ID'
+                },
+                email: {
+                  type: 'string',
+                  description: 'Customer email (alternative to customer_id)'
+                },
+                include_events: {
+                  type: 'boolean',
+                  description: 'Include event timeline. Default: true'
+                },
+                include_purchases: {
+                  type: 'boolean',
+                  description: 'Include purchase history. Default: true'
+                },
+                include_work_orders: {
+                  type: 'boolean',
+                  description: 'Include work orders. Default: true'
+                },
+                include_knowledge: {
+                  type: 'boolean',
+                  description: 'Include customer knowledge/notes. Default: true'
+                },
+                events_limit: {
+                  type: 'number',
+                  description: 'Maximum events to retrieve. Default: 20'
+                },
+                purchases_limit: {
+                  type: 'number',
+                  description: 'Maximum purchases to retrieve. Default: 10'
+                }
+              }
+            }
+          },
+          {
+            name: 'search_customers',
+            description: 'Search for customers by name, email, company, or tags using full-text search',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                query: {
+                  type: 'string',
+                  description: 'Search query'
+                },
+                limit: {
+                  type: 'number',
+                  description: 'Maximum results to return. Default: 10'
+                }
+              },
+              required: ['query']
+            }
+          },
+          {
+            name: 'get_customer_timeline',
+            description: 'Get chronological timeline of all customer interactions and events',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                customer_id: {
+                  type: 'string',
+                  description: 'Customer ID'
+                },
+                event_types: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Filter by event types (optional)'
+                },
+                limit: {
+                  type: 'number',
+                  description: 'Maximum events to return. Default: 50'
+                }
+              },
+              required: ['customer_id']
+            }
+          },
+          {
+            name: 'create_customer_profile',
+            description: 'Create a new customer profile',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                id: {
+                  type: 'string',
+                  description: 'Customer ID (optional, auto-generated if not provided)'
+                },
+                name: {
+                  type: 'string',
+                  description: 'Customer name'
+                },
+                email: {
+                  type: 'string',
+                  description: 'Customer email'
+                },
+                phone: {
+                  type: 'string',
+                  description: 'Customer phone number'
+                },
+                company: {
+                  type: 'string',
+                  description: 'Customer company'
+                },
+                status: {
+                  type: 'string',
+                  enum: ['active', 'inactive', 'vip', 'at-risk'],
+                  description: 'Customer status. Default: active'
+                },
+                tags: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Customer tags for categorization'
+                },
+                custom_fields: {
+                  type: 'object',
+                  description: 'Custom fields as key-value pairs'
+                }
+              },
+              required: ['name']
+            }
+          },
+          {
+            name: 'update_customer_profile',
+            description: 'Update an existing customer profile',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                customer_id: {
+                  type: 'string',
+                  description: 'Customer ID to update'
+                },
+                name: {
+                  type: 'string',
+                  description: 'Updated name'
+                },
+                email: {
+                  type: 'string',
+                  description: 'Updated email'
+                },
+                phone: {
+                  type: 'string',
+                  description: 'Updated phone'
+                },
+                company: {
+                  type: 'string',
+                  description: 'Updated company'
+                },
+                status: {
+                  type: 'string',
+                  enum: ['active', 'inactive', 'vip', 'at-risk'],
+                  description: 'Updated status'
+                },
+                tags: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Updated tags'
+                },
+                custom_fields: {
+                  type: 'object',
+                  description: 'Updated custom fields'
+                }
+              },
+              required: ['customer_id']
+            }
+          },
+          {
+            name: 'add_customer_note',
+            description: 'Add an important note or observation about a customer',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                customer_id: {
+                  type: 'string',
+                  description: 'Customer ID'
+                },
+                content: {
+                  type: 'string',
+                  description: 'Note content'
+                },
+                category: {
+                  type: 'string',
+                  enum: ['preference', 'complaint', 'praise', 'technical', 'other'],
+                  description: 'Note category'
+                },
+                importance: {
+                  type: 'string',
+                  enum: ['low', 'medium', 'high', 'critical'],
+                  description: 'Note importance. Default: medium'
+                },
+                tags: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Note tags'
+                }
+              },
+              required: ['customer_id', 'content']
+            }
           }
         ]
       };
@@ -931,10 +1244,13 @@ class CopilotMemoryServer {
       try {
         switch (name) {
           case 'store_knowledge':
+          case 'store-knowledge':
             return await this.storeKnowledge(args);
           case 'retrieve_knowledge':
+          case 'retrieve-knowledge':
             return await this.retrieveKnowledge(args);
           case 'list_knowledge':
+          case 'list-knowledge':
             return await this.listKnowledge(args);
           case 'store_rule':
             return await this.storeRule(args);
@@ -959,6 +1275,19 @@ class CopilotMemoryServer {
             return await this.findReferences(args);
           case 'get_index_stats':
             return await this.getIndexStats(args);
+          // Customer management tools
+          case 'get_customer_context':
+            return await this.getCustomerContext(args);
+          case 'search_customers':
+            return await this.searchCustomers(args);
+          case 'get_customer_timeline':
+            return await this.getCustomerTimeline(args);
+          case 'create_customer_profile':
+            return await this.createCustomerProfile(args);
+          case 'update_customer_profile':
+            return await this.updateCustomerProfile(args);
+          case 'add_customer_note':
+            return await this.addCustomerNote(args);
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -979,6 +1308,11 @@ class CopilotMemoryServer {
   async storeKnowledge(args) {
     const scope = args.scope || 'project';
     this.initializeDatabase(scope);
+
+    const content = (args.content || args.messages || '').trim();
+    if (!content) {
+      throw new Error('content is required');
+    }
     
     const id = this.generateId();
     const timestamp = Math.floor(Date.now() / 1000);
@@ -1017,7 +1351,7 @@ class CopilotMemoryServer {
 
     this.statements[scope].insert.run(
       id,
-      args.content,
+      content,
       tags,
       metadata,
       args.source || null,
@@ -1059,6 +1393,8 @@ class CopilotMemoryServer {
     const useFullText = args.useFullText !== false;
     const includeRelatedContext = args.include_related !== false;
 
+    const query = typeof args.query === 'string' ? args.query.trim() : '';
+
     let results = [];
 
     // Determine which scopes to search
@@ -1070,10 +1406,12 @@ class CopilotMemoryServer {
       this.initializeDatabase(s);
       
       let rows;
-      if (useFullText) {
-        rows = this.statements[s].searchFts.all(args.query, limit);
+      if (!query) {
+        rows = this.statements[s].getAll.all(limit);
+      } else if (useFullText) {
+        rows = this.statements[s].searchFts.all(query, limit);
       } else {
-        const likeQuery = `%${args.query}%`;
+        const likeQuery = `%${query}%`;
         rows = this.statements[s].searchLike.all(likeQuery, likeQuery, likeQuery, limit);
       }
 
@@ -1091,68 +1429,32 @@ class CopilotMemoryServer {
     results.sort((a, b) => b.updated_at - a.updated_at);
     results = results.slice(0, limit);
 
-    // Format results with enhanced context
-    const formattedResults = results.map(row => {
-      let text = `[${row.scope.toUpperCase()}] ${row.content}`;
-      if (row.context) {
-        text += ` (${row.context})`;
-      }
-      if (row.active_file) {
-        text += `\n   📍 File: ${row.active_file}`;
-      }
-      if (includeRelatedContext && row.related_files && row.related_files.length > 0) {
-        text += `\n   📁 Related: ${row.related_files.slice(0, 3).join(', ')}`;
-        if (row.related_files.length > 3) {
-          text += ` (+${row.related_files.length - 3} more)`;
-        }
-      }
-      if (includeRelatedContext && row.related_symbols && row.related_symbols.length > 0) {
-        const symbolNames = row.related_symbols.slice(0, 5).map(s => s.name);
-        text += `\n   🔗 Symbols: ${symbolNames.join(', ')}`;
-        if (row.related_symbols.length > 5) {
-          text += ` (+${row.related_symbols.length - 5} more)`;
-        }
-      }
-      return text;
-    }).join('\n\n');
+    const mapped = results.map(row => ({
+      id: row.id,
+      content: row.content,
+      tags: row.tags || [],
+      source: row.source || null,
+      context: row.context || null,
+      metadata: row.metadata ? JSON.parse(row.metadata) : null,
+      scope: row.scope,
+      related_files: includeRelatedContext ? (row.related_files || []) : [],
+      related_symbols: includeRelatedContext ? (row.related_symbols || []) : [],
+      active_file: row.active_file || null,
+      createdAt: row.created_at ? new Date(row.created_at * 1000).toISOString() : null,
+      updatedAt: row.updated_at ? new Date(row.updated_at * 1000).toISOString() : null
+    }));
 
-    // Also search for matching symbols in the query (for project scope only)
-    let symbolMatches = [];
-    if (scope === 'project' || scope === 'all') {
-      try {
-        const enricher = this.getContextEnricher();
-        const entities = enricher.extractEntities(args.query);
-        const allSymbolNames = new Set([
-          ...entities.functionCalls,
-          ...entities.classNames,
-          ...entities.identifiers
-        ]);
-        
-        if (allSymbolNames.size > 0) {
-          symbolMatches = enricher.lookupSymbols(allSymbolNames, 5);
-        }
-      } catch (e) {
-        // Symbol lookup is optional
-      }
-    }
-
-    let responseText = results.length > 0 
-      ? `🧠 Found ${results.length} entries:\n\n${formattedResults}`
-      : '❌ No matching knowledge found';
-
-    // Add symbol matches if any
-    if (symbolMatches.length > 0) {
-      responseText += `\n\n🔍 Related code symbols:\n`;
-      for (const s of symbolMatches.slice(0, 5)) {
-        responseText += `   • ${s.name} (${s.file}:${s.line})\n`;
-      }
-    }
+    const payload = {
+      query,
+      total: mapped.length,
+      results: mapped
+    };
 
     return {
       content: [
         {
           type: 'text',
-          text: responseText
+          text: JSON.stringify(payload)
         }
       ]
     };
@@ -1197,11 +1499,33 @@ class CopilotMemoryServer {
     const totalCount = allEntries.length;
     statsText += `Grand Total: ${totalCount} entries shown`;
 
+    const mapped = allEntries.map(row => ({
+      id: row.id,
+      content: row.content,
+      tags: row.tags ? JSON.parse(row.tags) : [],
+      source: row.source || null,
+      context: row.context || null,
+      metadata: row.metadata ? JSON.parse(row.metadata) : null,
+      scope: row.scope,
+      related_files: row.related_files ? JSON.parse(row.related_files) : [],
+      related_symbols: row.related_symbols ? JSON.parse(row.related_symbols) : [],
+      active_file: row.active_file || null,
+      createdAt: row.created_at ? new Date(row.created_at * 1000).toISOString() : null,
+      updatedAt: row.updated_at ? new Date(row.updated_at * 1000).toISOString() : null
+    }));
+
+    const payload = {
+      scope,
+      total: totalCount,
+      statsText,
+      results: mapped
+    };
+
     return {
       content: [
         {
           type: 'text',
-          text: statsText
+          text: JSON.stringify(payload)
         }
       ]
     };
@@ -1810,10 +2134,363 @@ class CopilotMemoryServer {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   }
 
+  // ==================== CUSTOMER MANAGEMENT METHODS ====================
+
+  ensureCustomerContextBuilder() {
+    if (!this.customerContextBuilder) {
+      this.initializeDatabase('project'); // Ensure customer tables exist
+      this.customerContextBuilder = new CustomerContextBuilder(this.dbs.project);
+    }
+  }
+
+  async getCustomerContext(args) {
+    this.ensureCustomerContextBuilder();
+
+    const identifier = args.customer_id || args.email;
+    if (!identifier) {
+      throw new Error('Either customer_id or email is required');
+    }
+
+    try {
+      const context = await this.customerContextBuilder.buildCustomerContext(identifier, {
+        includeEvents: args.include_events !== false,
+        includePurchases: args.include_purchases !== false,
+        includeWorkOrders: args.include_work_orders !== false,
+        includeKnowledge: args.include_knowledge !== false,
+        eventsLimit: args.events_limit || 20,
+        purchasesLimit: args.purchases_limit || 10
+      });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `# Customer Context: ${context.customer.name}\n\n${context.ai_context_summary}`
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Error: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+
+  async searchCustomers(args) {
+    this.ensureCustomerContextBuilder();
+
+    try {
+      const results = this.customerContextBuilder.searchCustomers(args.query, args.limit || 10);
+
+      if (results.length === 0) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `🔍 No customers found matching "${args.query}"`
+            }
+          ]
+        };
+      }
+
+      const formatted = results.map(c =>
+        `👤 ${c.name} (${c.email || 'No email'})\n   ID: ${c.id} | Status: ${c.status} | LTV: $${c.lifetime_value}`
+      ).join('\n\n');
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `🔍 Found ${results.length} customers:\n\n${formatted}`
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Error: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+
+  async getCustomerTimeline(args) {
+    this.ensureCustomerContextBuilder();
+
+    try {
+      const timeline = this.customerContextBuilder.getCustomerTimeline(args.customer_id, {
+        limit: args.limit || 50,
+        eventTypes: args.event_types
+      });
+
+      if (timeline.length === 0) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `📅 No events found for customer ${args.customer_id}`
+            }
+          ]
+        };
+      }
+
+      const formatted = timeline.map(e => {
+        const date = new Date(e.event_date * 1000).toLocaleDateString();
+        return `📅 ${date} - [${e.event_type}] ${e.title}\n   ${e.description || 'No description'}`;
+      }).join('\n\n');
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `📅 Customer Timeline (${timeline.length} events):\n\n${formatted}`
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Error: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+
+  async createCustomerProfile(args) {
+    this.initializeDatabase('project');
+
+    try {
+      const id = args.id || this.generateId();
+      const now = Math.floor(Date.now() / 1000);
+
+      const stmt = this.dbs.project.prepare(`
+        INSERT INTO customers (id, name, email, phone, company, status, customer_since, lifetime_value, tags, custom_fields, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      stmt.run(
+        id,
+        args.name,
+        args.email || null,
+        args.phone || null,
+        args.company || null,
+        args.status || 'active',
+        now,
+        0, // initial lifetime_value
+        JSON.stringify(args.tags || []),
+        JSON.stringify(args.custom_fields || {}),
+        now,
+        now
+      );
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `✅ Customer profile created successfully!\n\nID: ${id}\nName: ${args.name}\nEmail: ${args.email || 'N/A'}\nStatus: ${args.status || 'active'}`
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Error creating customer: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+
+  async updateCustomerProfile(args) {
+    this.initializeDatabase('project');
+
+    try {
+      // Get existing customer
+      const existing = this.dbs.project.prepare('SELECT * FROM customers WHERE id = ?').get(args.customer_id);
+      if (!existing) {
+        throw new Error(`Customer not found: ${args.customer_id}`);
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      const updates = [];
+      const params = [];
+
+      if (args.name !== undefined) {
+        updates.push('name = ?');
+        params.push(args.name);
+      }
+      if (args.email !== undefined) {
+        updates.push('email = ?');
+        params.push(args.email);
+      }
+      if (args.phone !== undefined) {
+        updates.push('phone = ?');
+        params.push(args.phone);
+      }
+      if (args.company !== undefined) {
+        updates.push('company = ?');
+        params.push(args.company);
+      }
+      if (args.status !== undefined) {
+        updates.push('status = ?');
+        params.push(args.status);
+      }
+      if (args.tags !== undefined) {
+        updates.push('tags = ?');
+        params.push(JSON.stringify(args.tags));
+      }
+      if (args.custom_fields !== undefined) {
+        updates.push('custom_fields = ?');
+        params.push(JSON.stringify(args.custom_fields));
+      }
+
+      updates.push('updated_at = ?');
+      params.push(now);
+      params.push(args.customer_id);
+
+      const stmt = this.dbs.project.prepare(`
+        UPDATE customers
+        SET ${updates.join(', ')}
+        WHERE id = ?
+      `);
+
+      stmt.run(...params);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `✅ Customer profile updated successfully!\n\nID: ${args.customer_id}\nUpdated fields: ${Object.keys(args).filter(k => k !== 'customer_id').join(', ')}`
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Error updating customer: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+
+  async addCustomerNote(args) {
+    this.initializeDatabase('project');
+
+    try {
+      const id = this.generateId();
+      const now = Math.floor(Date.now() / 1000);
+
+      const stmt = this.dbs.project.prepare(`
+        INSERT INTO customer_knowledge (id, customer_id, content, category, importance, tags, source, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      stmt.run(
+        id,
+        args.customer_id,
+        args.content,
+        args.category || 'other',
+        args.importance || 'medium',
+        JSON.stringify(args.tags || []),
+        'manual',
+        now,
+        now
+      );
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `✅ Customer note added successfully!\n\nCustomer: ${args.customer_id}\nCategory: ${args.category || 'other'}\nImportance: ${args.importance || 'medium'}\n\n${args.content}`
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Error adding note: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     console.error('Copilot Memory MCP Server (Multi-Scope) running on stdio');
+
+    // Start NATS subscriber if configured
+    await this.startNATSService();
+  }
+
+  async startNATSService() {
+    // Check if NATS is enabled via environment variable
+    const natsEnabled = process.env.NATS_ENABLED === 'true' || process.env.NATS_ENABLED === '1';
+
+    if (!natsEnabled) {
+      console.error('[NATS] NATS service is disabled. Set NATS_ENABLED=true to enable.');
+      return;
+    }
+
+    try {
+      // Initialize project database to ensure customer tables exist
+      this.initializeDatabase('project');
+
+      // Get NATS configuration from environment
+      const natsConfig = {
+        servers: process.env.NATS_SERVERS || 'nats://localhost:4222',
+        subjects: process.env.NATS_SUBJECTS ? process.env.NATS_SUBJECTS.split(',') : ['customer.events.>'],
+        queueGroup: process.env.NATS_QUEUE_GROUP || 'contextiq-service',
+        eventProcessor: {
+          summarizeThreshold: parseInt(process.env.NATS_SUMMARIZE_THRESHOLD || '500'),
+          autoCreateCustomer: process.env.NATS_AUTO_CREATE_CUSTOMER !== 'false'
+        }
+      };
+
+      console.error('[NATS] Starting NATS subscriber service...');
+      console.error('[NATS] Configuration:', JSON.stringify(natsConfig, null, 2));
+
+      this.natsService = new NATSSubscriberService(this.dbs.project, natsConfig);
+      await this.natsService.start();
+
+      console.error('[NATS] Service started successfully');
+    } catch (error) {
+      console.error('[NATS] Failed to start NATS service:', error);
+      console.error('[NATS] Continuing without NATS integration...');
+    }
+  }
+
+  async stopNATSService() {
+    if (this.natsService) {
+      console.error('[NATS] Stopping NATS service...');
+      await this.natsService.stop();
+      this.natsService = null;
+    }
   }
 }
 

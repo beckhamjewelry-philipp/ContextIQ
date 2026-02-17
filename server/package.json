@@ -1,17 +1,19 @@
 {
-  "name": "copilot-memory-mcp-server",
-  "version": "1.0.0",
-  "description": "MCP server for Copilot memory storage with flexible storage backends",
+  "name": "customeriq",
+  "version": "2.0.0",
+  "description": "CustomerIQ - Production-ready customer context platform with MCP, REST API, NATS integration, and CRM sync",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
     "build": "echo \"No build required for CommonJS\"",
-    "start": "node index.js",
+    "start": "node app.js",
     "test": "echo \"No tests specified\" && exit 1"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "better-sqlite3": "^12.4.1",
+    "mssql": "^12.2.0",
+    "nats": "^2.29.3",
     "sqlite3": "^5.1.7"
   },
   "engines": {

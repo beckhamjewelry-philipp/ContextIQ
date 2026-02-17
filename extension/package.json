@@ -307,12 +307,13 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run compile && npm run copy-server",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js",
+    "copy-server": "node ./scripts/copy-mcp-server.js",
     "package": "vsce package"
   },
   "devDependencies": {
@@ -327,6 +328,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.21.0",
+    "better-sqlite3": "^12.4.1",
+    "sqlite3": "^5.1.7",
     "uuid": "^10.0.0"
   }
 }

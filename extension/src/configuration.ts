@@ -83,7 +83,7 @@ export class ConfigurationManager {
       await config.update('mcp.serverPath', serverPath, vscode.ConfigurationTarget.Global);
     } else {
       // Use bundled server
-      const bundledServerPath = path.join(this.context.extensionPath, 'server', 'dist', 'index-sqlite.js');
+      const bundledServerPath = this.getBundledServerPath();
       await config.update('mcp.serverPath', bundledServerPath, vscode.ConfigurationTarget.Global);
     }
 
@@ -131,7 +131,7 @@ export class ConfigurationManager {
       }
 
       // Return bundled server path
-      return path.join(this.context.extensionPath, 'server', 'dist', 'index-sqlite.js');
+      return this.getBundledServerPath();
     }
     
     return this.expandPath(serverPath);
@@ -142,6 +142,22 @@ export class ConfigurationManager {
       return path.join(os.homedir(), filePath.slice(2));
     }
     return filePath;
+  }
+
+  private getBundledServerPath(): string {
+    const directPath = path.join(this.context.extensionPath, 'server', 'index-sqlite.js');
+    if (fs.existsSync(directPath)) {
+      return directPath;
+    }
+
+    const distPath = path.join(this.context.extensionPath, 'server', 'dist', 'index-sqlite.js');
+    if (fs.existsSync(distPath)) {
+      return distPath;
+    }
+
+    // Fallback for dev builds where extension is inside the repo
+    const repoPath = path.join(this.context.extensionPath, '..', '..', 'server', 'index-sqlite.js');
+    return repoPath;
   }
 
   async writeServerConfig(): Promise<void> {

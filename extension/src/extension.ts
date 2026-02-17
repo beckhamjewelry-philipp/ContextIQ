@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 // import { MCPClient } from './mcpClient';
 // import { MemoryExplorerProvider } from './memoryExplorer';
 import { ConfigurationManager } from './configuration';
@@ -15,6 +16,34 @@ function buildNodePath(extraPaths: string[]): string | undefined {
   const existing = process.env.NODE_PATH ? process.env.NODE_PATH.split(path.delimiter) : [];
   const merged = Array.from(new Set([...extraPaths, ...existing].filter(Boolean)));
   return merged.length ? merged.join(path.delimiter) : undefined;
+}
+
+function resolveBundledServerPath(context: vscode.ExtensionContext): string {
+  const extensionPath = context.extensionPath;
+  const directPath = path.join(extensionPath, 'server', 'index-sqlite.js');
+  if (fs.existsSync(directPath)) {
+    return directPath;
+  }
+
+  const distPath = path.join(extensionPath, 'server', 'dist', 'index-sqlite.js');
+  if (fs.existsSync(distPath)) {
+    return distPath;
+  }
+
+  return context.asAbsolutePath('../../server/index-sqlite.js');
+}
+
+function getVSCodeMcpConfigPath(): string {
+  if (process.platform === 'win32') {
+    const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+    return path.join(appData, 'Code', 'User', 'mcp.json');
+  }
+
+  if (process.platform === 'darwin') {
+    return path.join(os.homedir(), 'Library', 'Application Support', 'Code', 'User', 'mcp.json');
+  }
+
+  return path.join(os.homedir(), '.config', 'Code', 'User', 'mcp.json');
 }
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -274,7 +303,7 @@ async function exportMemoryEmbedded(embeddedServer: EmbeddedMCPServer) {
 
 async function testSQLiteServer(context: vscode.ExtensionContext) {
   try {
-    const serverPath = context.asAbsolutePath('../../server/index-sqlite.js');
+    const serverPath = resolveBundledServerPath(context);
     vscode.window.showInformationMessage('Testing SQLite MCP Server...', 'View Output').then(action => {
       if (action === 'View Output') {
         vscode.commands.executeCommand('workbench.action.toggleDevTools');
@@ -446,8 +475,7 @@ function generateMemoryHTML(memories: any[], stats?: any): string {
 
 async function setupCopilotMCP(context: vscode.ExtensionContext) {
   try {
-    // Use absolute path to the server
-    const serverPath = '/Users/admin/NodeMCPs/copilot-memory-mcp/server/index-sqlite.js';
+    const serverPath = resolveBundledServerPath(context);
     
     const config = {
       mcpServers: {
@@ -496,11 +524,7 @@ async function resetMCPConfiguration(context: vscode.ExtensionContext) {
   }
 
   try {
-    const path = require('path');
-    const os = require('os');
-    
-    // Use absolute path to the server
-    const serverPath = '/Users/admin/NodeMCPs/copilot-memory-mcp/server/index-sqlite.js';
+    const serverPath = resolveBundledServerPath(context);
     
     const config = {
       servers: {
@@ -520,8 +544,7 @@ async function resetMCPConfiguration(context: vscode.ExtensionContext) {
     
     // 1. Update VS Code MCP configuration
     try {
-      const vscodeConfigPath = path.join(os.homedir(), 'Library/Application Support/Code/User/mcp.json');
-      const fs = require('fs');
+      const vscodeConfigPath = getVSCodeMcpConfigPath();
       
       // Backup existing config
       if (fs.existsSync(vscodeConfigPath)) {
@@ -870,7 +893,7 @@ The system automatically extracts:
  * Copy MCP JSON configuration to clipboard for easy Copilot setup
  */
 async function copyMCPJsonConfiguration(context: vscode.ExtensionContext): Promise<void> {
-  const serverPath = context.asAbsolutePath('../../server/index-sqlite.js');
+  const serverPath = resolveBundledServerPath(context);
   
   const mcpConfig = {
     "mcpServers": {
@@ -981,7 +1004,7 @@ async function installAndConfigureExtension(context: vscode.ExtensionContext): P
       
       // Step 1: Copy MCP configuration (fast)
       progress.report({ increment: 25, message: 'Copying MCP configuration...' });
-      const serverPath = context.asAbsolutePath('../../server/index-sqlite.js');
+      const serverPath = resolveBundledServerPath(context);
       
       const mcpConfig = {
         "mcpServers": {
@@ -1034,7 +1057,7 @@ async function installAndConfigureExtension(context: vscode.ExtensionContext): P
       }, 1000);
       
     } else if (choice === 'Show Configuration') {
-      const serverPath = context.asAbsolutePath('../../server/index-sqlite.js');
+      const serverPath = resolveBundledServerPath(context);
       const configJson = JSON.stringify({
         "mcpServers": {
           "copilot-memory-sqlite": {
